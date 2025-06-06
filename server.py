@@ -19,6 +19,9 @@ from sqlalchemy.orm import Session
 from database import SessionLocal, engine
 from models import Base, User
 from dotenv import load_dotenv
+from seed_users import seed
+
+seed()
 
 # Load environment variables
 load_dotenv()
@@ -183,7 +186,7 @@ class ConnectionManager:
 manager = ConnectionManager()
 # Ollama API settings
 OLLAMA_URL = "http://localhost:11434/api/chat"
-MODEL_NAME = "llama2"
+MODEL_NAME = "mistral"
 
 def session_key(uuid, session_id):
     return f"chat:{uuid}:{session_id}"
