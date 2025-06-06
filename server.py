@@ -19,6 +19,8 @@ from sqlalchemy.orm import Session
 from database import SessionLocal, engine
 from models import Base, User
 from dotenv import load_dotenv
+import httpx 
+
 
 # Load environment variables
 load_dotenv()
@@ -132,6 +134,15 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     access_token = create_access_token(data={"sub": user.username}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     logger.info(f"User logged in: {user.username} (uuid: {user.uuid})")
+
+    webhook_url = "http://127.0.0.1:9000/webhook/receive"
+    async with httpx.AsyncClient() as client:
+        await client.post(webhook_url, json={
+            "event":"login",
+            "user": user.username,
+            "uuid":user.uuid,
+            "timestamp": int(time.time())
+        })
     return {"access_token": access_token, "token_type": "bearer", "user_uuid": user.uuid}
 
 @app.get("/users/me/", response_model=UserOut)
@@ -183,7 +194,7 @@ class ConnectionManager:
 manager = ConnectionManager()
 # Ollama API settings
 OLLAMA_URL = "http://localhost:11434/api/chat"
-MODEL_NAME = "llama2"
+MODEL_NAME = "gemma3:4b"
 
 def session_key(uuid, session_id):
     return f"chat:{uuid}:{session_id}"
