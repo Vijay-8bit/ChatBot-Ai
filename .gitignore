@@ -1,0 +1,5 @@
+myenv
+_pycache_
+.env
+my_app.log
+test.db
