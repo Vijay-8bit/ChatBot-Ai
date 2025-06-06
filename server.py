@@ -26,6 +26,7 @@ from datetime import datetime
 # 🔗 Your webhook receiver URL from webhook.site
 WEBHOOK_URL = "https://webhook.site/821d8679-eeda-49a7-87a5-2eeb93ad706f"  # from webhook  actual URL
 
+
 # Load environment variables
 load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -152,12 +153,23 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     access_token = create_access_token(data={"sub": user.username}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     logger.info(f"User logged in: {user.username} (uuid: {user.uuid})")
      # ✅ Send webhook after successful login
-    await send_webhook({
+
+    await send_webhook({ # Done by priyanshu
         "event": "user_login",
         "username": user.username,
         "uuid": user.uuid,
         "timestamp": datetime.utcnow().isoformat()
     })
+
+    webhook_url = "http://127.0.0.1:9000/webhook/receive" #Done by Vishal 
+    async with httpx.AsyncClient() as client:
+        await client.post(webhook_url, json={
+            "event":"login",
+            "user": user.username,
+            "uuid":user.uuid,
+            "timestamp": int(time.time())
+        })
+
 
     return {"access_token": access_token, "token_type": "bearer", "user_uuid": user.uuid}
 
