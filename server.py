@@ -19,13 +19,12 @@ from sqlalchemy.orm import Session
 from database import SessionLocal, engine
 from models import Base, User
 from dotenv import load_dotenv
+import httpx  # For HTTP requests if needed 
+from datetime import datetime   
 
-import httpx 
 
-from seed_users import seed
-
-seed()
-
+# 🔗 Your webhook receiver URL from webhook.site
+WEBHOOK_URL = "https://webhook.site/821d8679-eeda-49a7-87a5-2eeb93ad706f"  # from webhook  actual URL
 
 # Load environment variables
 load_dotenv()
@@ -85,6 +84,19 @@ class UserOut(BaseModel):
     disabled: bool | None = None
     uuid: str
 
+
+    
+async def send_webhook(event: dict):
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(WEBHOOK_URL, json=event)
+            print("✅ Webhook sent:", response.status_code)
+        except Exception as e:
+            print("❌ Webhook failed:", e)
+
+
+
+
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
@@ -139,16 +151,16 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     access_token = create_access_token(data={"sub": user.username}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     logger.info(f"User logged in: {user.username} (uuid: {user.uuid})")
+     # ✅ Send webhook after successful login
+    await send_webhook({
+        "event": "user_login",
+        "username": user.username,
+        "uuid": user.uuid,
+        "timestamp": datetime.utcnow().isoformat()
+    })
 
-    webhook_url = "http://127.0.0.1:9000/webhook/receive"
-    async with httpx.AsyncClient() as client:
-        await client.post(webhook_url, json={
-            "event":"login",
-            "user": user.username,
-            "uuid":user.uuid,
-            "timestamp": int(time.time())
-        })
     return {"access_token": access_token, "token_type": "bearer", "user_uuid": user.uuid}
+
 
 @app.get("/users/me/", response_model=UserOut)
 async def read_users_me(current_user: User = Depends(get_current_active_user)):
@@ -199,9 +211,7 @@ class ConnectionManager:
 manager = ConnectionManager()
 # Ollama API settings
 OLLAMA_URL = "http://localhost:11434/api/chat"
-
-MODEL_NAME = "gemma3:4b"
-
+MODEL_NAME = "mistral"
 
 def session_key(uuid, session_id):
     return f"chat:{uuid}:{session_id}"
