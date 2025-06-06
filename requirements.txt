@@ -38,3 +38,4 @@ passlib[bcrypt]
 python-jose
 redis
 aioredis
+httpx
